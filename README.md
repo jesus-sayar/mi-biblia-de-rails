@@ -68,7 +68,7 @@ Post.includes(:comments).where(comments: {name: 'foo' })
 Post.includes(:comments).where('comments.name' => 'foo')
 ```
 
-### ActiveModel::Model
+## ActiveModel::Model
 
 Permite crear un modelo que no esta mapeado a la base de datos, puediendo disfrutar de las ventajas de ActiveRecord (validaciones, callbacks etc...) pero sin 
 trabajar sobre una base de datos
