@@ -62,11 +62,42 @@ Post.where.not(author: 'admin')
 
 # Order
 User.order(:name, created_at: :desc) # Default order is ASC
-
-# Joins
-Post.includes(:comments).where(comments: {name: 'foo' })
-Post.includes(:comments).where('comments.name' => 'foo')
 ```
+
+### Joins
+
+Rails tiene 2 formas de realizar joins. Uno está utilizando querys separadas para obtener los datos adicionales. Y la otra es utilizando una consulta (con LEFT OUTER JOIN) para obtener los datos adicionales.
+Si usas #preload, significa que quieres queries separadas.
+Si usas #eager_load usarás una unica query.
+Si usas #includes, Rails decidirá por ti el camino a seguir.
+Si usas #joins y le pasas el nombre de una asociación Rails realizará una query con INNER JOIN, si usas #joins y le pasas un string puedes realizar un OUTER JOIN.
+
+```ruby
+User.preload(:addresses)
+
+#  SELECT "users".* FROM "users" 
+#  SELECT "addresses".* FROM "addresses" WHERE "addresses"."user_id" IN (1, 2)
+
+User.eager_load(:addresses)
+
+#  SELECT
+#  "users"."id" AS t0_r0, "users"."name" AS t0_r1, "users"."email" AS t0_r2, "users"."created_at" AS t0_r3, "users"."updated_at" AS t0_r4, 
+#  "addresses"."id" AS t1_r0, "addresses"."user_id" AS t1_r1, "addresses"."country" AS t1_r2, "addresses"."street" AS t1_r3, "addresses"."postal_code" AS t1_r4, "addresses"."city" AS t1_r5, "addresses"."created_at" AS t1_r6, "addresses"."updated_at" AS t1_r7 
+#  FROM "users" 
+#  LEFT OUTER JOIN "addresses" ON "addresses"."user_id" = "users"."id"
+
+Category.joins(:posts)
+
+#   SELECT categories.* FROM categories INNER JOIN posts ON posts.category_id = categories.id
+
+Client.joins('LEFT OUTER JOIN addresses ON addresses.client_id = clients.id')
+#   SELECT clients.* FROM clients LEFT OUTER JOIN addresses ON addresses.client_id = clients.id
+
+```
+
+#### References
+http://blog.arkency.com/2013/12/rails4-preloading/
+
 
 ## ActiveModel::Model
 
