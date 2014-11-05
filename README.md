@@ -66,11 +66,109 @@ User.order(:name, created_at: :desc) # Default order is ASC
 
 ### Joins
 
-Rails tiene 2 formas de realizar joins. Uno está utilizando querys separadas para obtener los datos adicionales. Y la otra es utilizando una consulta (con LEFT OUTER JOIN) para obtener los datos adicionales.
+Para realizar un JOIN Rails proporcional el metodo "joins" que puede ser utilizado de multiples formas.
+
+#### Usando Strings con fragmentos SQL
+
+Puedes utilizar SQL puro para espedificar las clausulas del JOIN.
+
+```ruby
+Client.joins('LEFT OUTER JOIN addresses ON addresses.client_id = clients.id')
+
+# Resultado 
+SELECT clients.* FROM clients LEFT OUTER JOIN addresses ON addresses.client_id = clients.id
+```
+
+#### Usando Array/Hash de nombres de Asociaciones
+
+ActiveRecord te deja utilizar los nombres de las asociaciones definidas en tu modelo como shorcuts para espedificar las clausulas del JOIN. Este metodo solo trabaja con INNER JOIN.
+
+```ruby
+Category.joins(:posts)
+
+# Resultado 
+SELECT categories.* FROM categories INNER JOIN posts ON posts.category_id = categories.id
+
+Post.joins(:category, :comments)
+
+# Resultado 
+SELECT posts.* FROM posts INNER JOIN categories ON posts.category_id = categories.id INNER JOIN comments ON comments.post_id = posts.id
+
+```
+
+MAS AQUI http://guides.rubyonrails.org/active_record_querying.html#joining-tables
+
+### Eager Loading Associations
+
+Eager Loading es el mecanismo para cargar los registros de las asociaciones de un objeto con el menor numero de consultas.
+
+#### N + 1 queries problem
+
+Consideremos el siguiente codigo que busca 10 clientes y sus postcodes.
+
+```ruby
+clients = Client.limit(10)
+ 
+clients.each do |client|
+  puts client.address.postcode
+end
+```
+
+El problema es el número de consultas ejecutadas. Este codigo ejecuta 1 consulta (para encontrar 10 clientes) + 10 (una por cada cliente para cargar su address) = 10 consultas en total.
+
+
+#### Solución al N + 1 queries problem
+
+ActiveRecord te deja especificar de forma avanzada todas las asociaciones que van a ser cargadas posteriormente. Esto es posible utilizando el metodo "#includes" sobre el modelo buscado. Con "#includes", ActiveRecord se asegura que todas las asociaciones espedificadas son cargadas previamente usando el mininmo numero de consultas.
+
+La solución al codigo anterior utilizando "eager load" de la address seria así:
+
+```ruby
+clients = Client.includes(:address).limit(10)
+ 
+clients.each do |client|
+  puts client.address.postcode
+end
+
+# Resultado
+SELECT * FROM clients LIMIT 10
+SELECT addresses.* FROM addresses WHERE (addresses.client_id IN (1,2,3,4,5,6,7,8,9,10))
+```
+
+### Eager Loading Multiple Associations
+
+ActiveRecord te permite realizar hacer "eager load" o "carga temprana" de cualquier numero de asociaciones de tu modelo usando el metodo "#includes" con un array/hash.
+
+```ruby
+# Recuperar todos los los posts y cargar todas las categorias y comentarios de cada post
+Post.includes(:category, :comments)
+```
+
+### Especificar condiciones en Eager Loaded Associations
+
+Aunque ActiveRecord te permite espedificar condiciones en el "eager loaded association" (asociaciones precargadas) de forma similar a como se hace con "#joins", el camino recomendado es usar #joins en su lugar.
+
+Sin embargo, si tu debes hacer esto, tu puedes usar "#where" como se usa habitualmente.
+
+```ruby
+Post.includes(:comments).where(comments: { visible: true })
+
+SELECT "posts"."id" AS t0_r0, ... "comments"."updated_at" AS t1_r5 FROM "posts" LEFT OUTER JOIN "comments" ON "comments"."post_id" = "posts"."id" WHERE (comments.visible = 1)
+```
+
+Cuando usas "#where" puede ser posible el uso de "#references"
+
+```ruby
+Post.includes(:comments).where("comments.visible = true").references(:comments)
+```
+
+### Metodos similares a #includes
+
+El metodo #includes realizada la carga previa utilizando las consultas que ActiveRecord estime mejor, pero existe la posiblidad de usar otros dos metodos para indicar la estrategia de precarga.
+
 Si usas #preload, significa que quieres queries separadas.
 Si usas #eager_load usarás una unica query.
 Si usas #includes, Rails decidirá por ti el camino a seguir.
-Si usas #joins y le pasas el nombre de una asociación Rails realizará una query con INNER JOIN, si usas #joins y le pasas un string puedes realizar un OUTER JOIN.
 
 ```ruby
 User.preload(:addresses)
